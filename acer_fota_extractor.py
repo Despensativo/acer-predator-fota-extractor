@@ -9,10 +9,12 @@
    - Acer Predator Connect T7  (Qualcomm IPQ5332 - Wi-Fi 7 BE11000)
    - Acer Predator Connect W6x (MediaTek MT7986 - Wi-Fi 6 AX6000)
    - Acer Predator Connect X7  (Qualcomm IPQ5332 - 5G CPE / Wi-Fi 7)
+   - Modelos Personalizados / Custom Models (W6, X5, W6m ou qualquer outro modelo Acer)
 
  Features / Recursos:
-   - Modo Interativo / Interactive Wizard: Pergunta as opções passo a passo para o usuário!
-   - Modo CLI Automatizado / Automated CLI Mode: Para scripts e pipelines de automação.
+   - Assistente Interativo com Perguntas / Interactive Wizard with step-by-step prompts.
+   - Suporte a modelos personalizados e número de série (S/N) próprio do usuário.
+   - Modo CLI Automatizado para scripts e pipelines.
    - 100% Autônomo / Standalone: Não requer o roteador físico, roda em qualquer PC/Mac/Linux.
    - Bilíngue / Bilingual: Comentários e interface em PT-BR e EN-US.
 
@@ -47,6 +49,9 @@ DEFAULT_DEVICE_IDS = {
     "T7":  "FFG2RTA007439002311L14",
     "W6x": "FFG2TTA007502007801N01",
     "X7":  "FFG2RTA007439002311L14",
+    "W6":  "FFG2RTA007439002311L14",
+    "X5":  "FFG2RTA007439002311L14",
+    "W6m": "FFG2RTA007439002311L14",
 }
 
 # Known SKU regions per model
@@ -55,6 +60,9 @@ KNOWN_SKUS = {
     "T7":  ["BR", "US", "GBL", "TW", "EU", "WW", "PA", "default"],
     "W6x": ["GBL", "US", "EU", "TW", "BR", "default"],
     "X7":  ["GBL", "US", "EU", "TW", "BR", "default"],
+    "W6":  ["GBL", "US", "EU", "TW", "BR", "default"],
+    "X5":  ["GBL", "EU", "default"],
+    "W6m": ["GBL", "US", "EU", "default"],
 }
 
 # Known version ranges to scan in transition graph
@@ -232,17 +240,19 @@ def download_firmware(item: dict, output_dir: str, device_id: str) -> bool:
 # --------------------------------------------------------------------------------------
 # Scanning Logic / Lógica de Varredura
 # --------------------------------------------------------------------------------------
-def scan_models(models: list, skus_filter: list = None, workers: int = 8) -> dict:
+def scan_models(models: list, skus_filter: list = None, workers: int = 8,
+                custom_device_id: str = None, custom_versions: list = None) -> dict:
     """
     [EN] High-speed multithreaded scanning of Acer FOTA version transition graph.
     [PT-BR] Varredura multithread de alta velocidade no grafo de versões do FOTA da Acer.
     """
     tasks = []
     for model in models:
-        dev_id = DEFAULT_DEVICE_IDS.get(model, DEFAULT_DEVICE_IDS["T7"])
-        target_skus = skus_filter if skus_filter else KNOWN_SKUS.get(model, ["default"])
+        dev_id = custom_device_id if custom_device_id else DEFAULT_DEVICE_IDS.get(model, DEFAULT_DEVICE_IDS["T7"])
+        target_skus = skus_filter if skus_filter else KNOWN_SKUS.get(model, ["default", "GBL", "BR", "US", "EU", "TW", "WW"])
+        target_versions = custom_versions if custom_versions else VERSION_PROBES
         for sku in target_skus:
-            for v in VERSION_PROBES:
+            for v in target_versions:
                 tasks.append((model, sku, v, dev_id))
 
     print(f"\n[*] Consultando servidor FOTA ({len(tasks)} requisições em {workers} threads paralelas)...")
@@ -308,19 +318,48 @@ def interactive_wizard():
         print("  [1] Acer Predator Connect T7  (Wi-Fi 7 BE11000 - Qualcomm IPQ5332)")
         print("  [2] Acer Predator Connect W6x (Wi-Fi 6 AX6000 - MediaTek MT7986)")
         print("  [3] Acer Predator Connect X7  (Wi-Fi 7 + 5G CPE - Qualcomm IPQ5332)")
-        print("  [4] TODOS OS MODELOS (Varredura Completa)")
-        mod_in = input("Escolha uma opção [1-4] (padrão: 1): ").strip()
+        print("  [4] TODOS OS MODELOS ACIMA (Varredura Completa)")
+        print("  [5] OUTRO MODELO PERSONALIZADO (Digitar seu modelo e número de série)")
+        mod_in = input("Escolha uma opção [1-5] (padrão: 1): ").strip()
     else:
         print("\n--- STEP 1: Choose your Acer Predator router model ---")
         print("  [1] Acer Predator Connect T7  (Wi-Fi 7 BE11000 - Qualcomm IPQ5332)")
         print("  [2] Acer Predator Connect W6x (Wi-Fi 6 AX6000 - MediaTek MT7986)")
         print("  [3] Acer Predator Connect X7  (Wi-Fi 7 + 5G CPE - Qualcomm IPQ5332)")
-        print("  [4] ALL MODELS (Full Scan)")
-        mod_in = input("Choose an option [1-4] (default: 1): ").strip()
+        print("  [4] ALL MODELS ABOVE (Full Scan)")
+        print("  [5] CUSTOM / OTHER MODEL (Enter model name & serial number)")
+        mod_in = input("Choose an option [1-5] (default: 1): ").strip()
 
-    model_map = {"1": "T7", "2": "W6x", "3": "X7", "4": "all"}
-    chosen_model = model_map.get(mod_in, "T7")
-    models = ["T7", "W6x", "X7"] if chosen_model == "all" else [chosen_model]
+    custom_device_id = None
+    custom_versions = None
+    chosen_skus = None
+
+    if mod_in == "5":
+        # Fluxo de modelo personalizado / Custom model flow
+        if is_pt:
+            print("\n--- CONFIGURAÇÃO DE MODELO PERSONALIZADO ---")
+            c_model = input("Digite o código do modelo (ex: W6, X5, W6m, T7): ").strip()
+            c_sn = input("Digite o Número de Série (S/N) que está na etiqueta do roteador [Enter para usar padrão]: ").strip()
+            c_sku = input("Digite a Região/SKU (ex: BR, US, GBL, EU, default) [Enter para testar todas]: ").strip()
+            c_ver = input("Digite a versão atual do firmware (ex: 1.00.000008) [Enter para varrer todas]: ").strip()
+        else:
+            print("\n--- CUSTOM MODEL CONFIGURATION ---")
+            c_model = input("Enter router model code (e.g. W6, X5, W6m, T7): ").strip()
+            c_sn = input("Enter Serial Number (S/N from router sticker) [Enter for default]: ").strip()
+            c_sku = input("Enter Region/SKU (e.g. BR, US, GBL, EU, default) [Enter to test all]: ").strip()
+            c_ver = input("Enter current firmware version (e.g. 1.00.000008) [Enter to probe all]: ").strip()
+
+        models = [c_model if c_model else "W6"]
+        if c_sn:
+            custom_device_id = c_sn
+        if c_sku:
+            chosen_skus = [c_sku]
+        if c_ver:
+            custom_versions = [c_ver]
+    else:
+        model_map = {"1": "T7", "2": "W6x", "3": "X7", "4": "all"}
+        chosen_model = model_map.get(mod_in, "T7")
+        models = ["T7", "W6x", "X7"] if chosen_model == "all" else [chosen_model]
 
     # 3. Ação / Action
     if is_pt:
@@ -338,26 +377,27 @@ def interactive_wizard():
 
     mode = "all" if act_in == "1" else ("latest" if act_in == "2" else "list")
 
-    # 4. Região / SKU
-    if is_pt:
-        print("\n--- PASSO 3: Região / SKU do aparelho ---")
-        print("  [1] Todas as regiões disponíveis (Brasil, Estados Unidos, Global, Taiwan, etc.)")
-        print("  [2] Brasil (BR)")
-        print("  [3] Estados Unidos (US)")
-        print("  [4] Global (GBL)")
-        print("  [5] Taiwan (TW)")
-        sku_in = input("Escolha uma opção [1-5] (padrão: 1): ").strip()
-    else:
-        print("\n--- STEP 3: Region / Hardware SKU ---")
-        print("  [1] All available regions (Brazil, US, Global, Taiwan, etc.)")
-        print("  [2] Brazil (BR)")
-        print("  [3] United States (US)")
-        print("  [4] Global (GBL)")
-        print("  [5] Taiwan (TW)")
-        sku_in = input("Choose an option [1-5] (default: 1): ").strip()
+    # 4. Região / SKU (se não foi configurada no modo personalizado)
+    if not chosen_skus:
+        if is_pt:
+            print("\n--- PASSO 3: Região / SKU do aparelho ---")
+            print("  [1] Todas as regiões disponíveis (Brasil, Estados Unidos, Global, Taiwan, etc.)")
+            print("  [2] Brasil (BR)")
+            print("  [3] Estados Unidos (US)")
+            print("  [4] Global (GBL)")
+            print("  [5] Taiwan (TW)")
+            sku_in = input("Escolha uma opção [1-5] (padrão: 1): ").strip()
+        else:
+            print("\n--- STEP 3: Region / Hardware SKU ---")
+            print("  [1] All available regions (Brazil, US, Global, Taiwan, etc.)")
+            print("  [2] Brazil (BR)")
+            print("  [3] United States (US)")
+            print("  [4] Global (GBL)")
+            print("  [5] Taiwan (TW)")
+            sku_in = input("Choose an option [1-5] (default: 1): ").strip()
 
-    sku_map = {"1": None, "2": ["BR"], "3": ["US"], "4": ["GBL"], "5": ["TW"]}
-    chosen_skus = sku_map.get(sku_in, None)
+        sku_map = {"1": None, "2": ["BR"], "3": ["US"], "4": ["GBL"], "5": ["TW"]}
+        chosen_skus = sku_map.get(sku_in, None)
 
     # 5. Diretório de Destino / Output Directory
     default_dir = "./firmwares_oficiais"
@@ -375,7 +415,9 @@ def interactive_wizard():
     if is_pt:
         print("RESUMO DA SOLICITAÇÃO:")
         print(f"  * Modelo(s):       {', '.join(models)}")
+        print(f"  * Device ID (S/N): {custom_device_id if custom_device_id else 'Padrão Oficial de Fábrica'}")
         print(f"  * Região / SKU:    {chosen_skus[0] if chosen_skus else 'Todas as regiões'}")
+        print(f"  * Versões Alvo:    {custom_versions[0] if custom_versions else 'Varredura automática completa'}")
         print(f"  * Ação:            {'Baixar todas as versões' if mode == 'all' else ('Baixar mais recente' if mode == 'latest' else 'Apenas listar')}")
         if mode != "list":
             print(f"  * Pasta de Saída:  {outdir}")
@@ -383,7 +425,9 @@ def interactive_wizard():
     else:
         print("OPERATION SUMMARY:")
         print(f"  * Model(s):        {', '.join(models)}")
+        print(f"  * Device ID (S/N): {custom_device_id if custom_device_id else 'Default Factory'}")
         print(f"  * Region / SKU:    {chosen_skus[0] if chosen_skus else 'All regions'}")
+        print(f"  * Target Versions: {custom_versions[0] if custom_versions else 'Full automated probe'}")
         print(f"  * Action:          {'Download all versions' if mode == 'all' else ('Download latest version only' if mode == 'latest' else 'List only')}")
         if mode != "list":
             print(f"  * Output Folder:   {outdir}")
@@ -394,7 +438,8 @@ def interactive_wizard():
         return
 
     # Executa a varredura
-    catalog = scan_models(models, skus_filter=chosen_skus, workers=10)
+    catalog = scan_models(models, skus_filter=chosen_skus, workers=10,
+                          custom_device_id=custom_device_id, custom_versions=custom_versions)
 
     # Exibe tabela resumo
     print("\n" + "=" * 90)
@@ -402,15 +447,22 @@ def interactive_wizard():
     print("=" * 90)
     print(f"{'Model':<6} | {'Version':<13} | {'Date':<10} | {'Size':<9} | {'SKUs':<12} | {'Change Notes / Changelog'}")
     print("-" * 90)
-    for k, item in sorted(catalog.items(), key=lambda x: (x[1]['project'], x[1]['target_version'])):
-        skus_str = ",".join(item["skus"][:3])
-        size_str = f"{item['size']/1024/1024:.1f} MB"
-        print(f"{item['project']:<6} | {item['target_version']:<13} | {item['releaseDate']:<10} | {size_str:<9} | {skus_str:<12} | {item['changeNotes']}")
+    if not catalog:
+        if is_pt:
+            print("  Nenhum firmware retornado para os parâmetros informados.")
+            print("  Dica: Verifique se o modelo, SKU ou versão atual informada estão corretos.")
+        else:
+            print("  No firmware found for the specified parameters.")
+            print("  Tip: Verify model name, SKU or version entered.")
+    else:
+        for k, item in sorted(catalog.items(), key=lambda x: (x[1]['project'], x[1]['target_version'])):
+            skus_str = ",".join(item["skus"][:3])
+            size_str = f"{item['size']/1024/1024:.1f} MB"
+            print(f"{item['project']:<6} | {item['target_version']:<13} | {item['releaseDate']:<10} | {size_str:<9} | {skus_str:<12} | {item['changeNotes']}")
     print("=" * 90)
 
     # Processa downloads se solicitado
-    if mode in ["all", "latest"]:
-        # Se for apenas a mais recente, filtra o catálogo para a maior versão de cada modelo/sku
+    if catalog and mode in ["all", "latest"]:
         items_to_download = []
         if mode == "latest":
             latest_by_model = {}
@@ -429,7 +481,7 @@ def interactive_wizard():
 
         success = 0
         for item in items_to_download:
-            dev_id = DEFAULT_DEVICE_IDS.get(item["project"], DEFAULT_DEVICE_IDS["T7"])
+            dev_id = custom_device_id if custom_device_id else DEFAULT_DEVICE_IDS.get(item["project"], DEFAULT_DEVICE_IDS["T7"])
             model_dir = os.path.join(outdir, f"Acer_Predator_{item['project']}")
             if download_firmware(item, model_dir, dev_id):
                 success += 1
@@ -447,8 +499,6 @@ def interactive_wizard():
 # CLI Interface / Interface de Linha de Comando Tradicional
 # --------------------------------------------------------------------------------------
 def main():
-    # If launched with no arguments, open the interactive wizard!
-    # Se executado sem argumentos, abre automaticamente o assistente interativo com perguntas!
     if len(sys.argv) == 1:
         interactive_wizard()
         return
@@ -462,13 +512,18 @@ Examples / Exemplos de Uso:
   python acer_fota_extractor.py --interactive   # Força o modo interativo
   python acer_fota_extractor.py --model T7 --list
   python acer_fota_extractor.py --model W6x --download --outdir ./Backups_MTD
+  python acer_fota_extractor.py --model W6 --device-id FFG2... --download
   python acer_fota_extractor.py --model all --download --outdir ./Backups_MTD
         """
     )
     parser.add_argument("-i", "--interactive", "--wizard", action="store_true",
                         help="Launch step-by-step interactive questionnaire / Inicia o assistente com perguntas")
-    parser.add_argument("--model", choices=["T7", "W6x", "X7", "all"], default="T7",
-                        help="Target router model / Modelo do roteador alvo (default: T7)")
+    parser.add_argument("--model", default="T7",
+                        help="Target router model (e.g. T7, W6x, X7, W6, X5, all) / Modelo do roteador alvo (default: T7)")
+    parser.add_argument("--device-id", "--serial", default=None,
+                        help="Custom Serial Number / Device ID from router sticker / Número de série personalizado")
+    parser.add_argument("--version", default=None,
+                        help="Specific version to query (e.g. 1.00.000008) / Versão específica para consultar")
     parser.add_argument("--sku", default=None,
                         help="Specific SKU/Region filter (e.g. BR, US, GBL) / Região específica")
     parser.add_argument("--list", action="store_true",
@@ -488,19 +543,23 @@ Examples / Exemplos de Uso:
         interactive_wizard()
         return
 
-    models = ["T7", "W6x", "X7"] if args.model == "all" else [args.model]
+    models = ["T7", "W6x", "X7"] if args.model.lower() == "all" else [args.model]
     skus = [args.sku] if args.sku else None
+    versions = [args.version] if args.version else None
 
     print("=" * 80)
     print(" ACER PREDATOR CONNECT - CLOUD FOTA EXTRACTOR & REVERSE ENGINEERING TOOL")
     print(" FERRAMENTA DE EXTRAÇÃO E ENGENHARIA REVERSA FOTA ACER PREDATOR CONNECT")
     print("=" * 80)
     print(f"Models / Modelos: {', '.join(models)}")
-    print(f"SKUs: {args.sku or 'All known / Todas conhecidas'}")
-    print(f"Mode / Modo: {'DOWNLOAD' if args.download else 'LIST ONLY / APENAS LISTAR'}")
-    print(f"Output Directory / Destino: {args.outdir}")
+    print(f"Device ID (S/N):  {args.device_id or 'Default / Padrão de Fábrica'}")
+    print(f"SKUs:             {args.sku or 'All known / Todas conhecidas'}")
+    print(f"Versions:         {args.version or 'All versions / Varredura completa'}")
+    print(f"Mode / Modo:      {'DOWNLOAD' if args.download else 'LIST ONLY / APENAS LISTAR'}")
+    print(f"Output Directory: {args.outdir}")
 
-    catalog = scan_models(models, skus_filter=skus, workers=args.threads)
+    catalog = scan_models(models, skus_filter=skus, workers=args.threads,
+                          custom_device_id=args.device_id, custom_versions=versions)
 
     with open(args.save_catalog, "w", encoding="utf-8") as f:
         json.dump(catalog, f, indent=2, ensure_ascii=False)
@@ -511,18 +570,21 @@ Examples / Exemplos de Uso:
     print("=" * 90)
     print(f"{'Model':<6} | {'Version':<13} | {'Date':<10} | {'Size':<9} | {'SKUs':<12} | {'Change Notes / Changelog'}")
     print("-" * 90)
-    for k, item in sorted(catalog.items(), key=lambda x: (x[1]['project'], x[1]['target_version'])):
-        skus_str = ",".join(item["skus"][:3])
-        size_str = f"{item['size']/1024/1024:.1f} MB"
-        print(f"{item['project']:<6} | {item['target_version']:<13} | {item['releaseDate']:<10} | {size_str:<9} | {skus_str:<12} | {item['changeNotes']}")
+    if not catalog:
+        print("  No firmware found. Check model name, SKU, or version.")
+    else:
+        for k, item in sorted(catalog.items(), key=lambda x: (x[1]['project'], x[1]['target_version'])):
+            skus_str = ",".join(item["skus"][:3])
+            size_str = f"{item['size']/1024/1024:.1f} MB"
+            print(f"{item['project']:<6} | {item['target_version']:<13} | {item['releaseDate']:<10} | {size_str:<9} | {skus_str:<12} | {item['changeNotes']}")
     print("=" * 90)
 
-    if args.download:
+    if args.download and catalog:
         print(f"\n[*] Starting download of {len(catalog)} firmware images to '{args.outdir}'...")
         print(f"[*] Iniciando download de {len(catalog)} imagens para '{args.outdir}'...\n")
         success = 0
         for item in catalog.values():
-            dev_id = DEFAULT_DEVICE_IDS.get(item["project"], DEFAULT_DEVICE_IDS["T7"])
+            dev_id = args.device_id if args.device_id else DEFAULT_DEVICE_IDS.get(item["project"], DEFAULT_DEVICE_IDS["T7"])
             model_dir = os.path.join(args.outdir, f"Acer_Predator_{item['project']}")
             if download_firmware(item, model_dir, dev_id):
                 success += 1

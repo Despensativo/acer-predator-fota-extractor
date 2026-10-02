@@ -57,17 +57,22 @@ python acer_fota_extractor.py
 ```
 O script fará um questionário na tela passo a passo:
 1. **Idioma:** Português (Brasil) ou English
-2. **Modelo:** Predator T7, W6x, X7 ou Todos
-3. **Ação:** Baixar todas as versões, apenas a mais recente ou apenas listar na tela
-4. **Região / SKU:** Brasil (BR), EUA (US), Global (GBL), etc.
-5. **Pasta de destino:** Onde salvar os arquivos no seu computador
+2. **Modelo:** Predator T7, W6x, X7, Todos ou **Outro Modelo Personalizado (W6, X5, W6m, etc.)**
+3. **Número de Série (S/N):** Você pode informar o número de série da etiqueta do seu aparelho (ou usar o padrão de fábrica testado)
+4. **Versão Atual:** Digitar sua versão atual para checar se há atualização direta, ou deixar em branco para varrer todas
+5. **Região / SKU:** Brasil (BR), EUA (US), Global (GBL), ou digitar a sua
+6. **Ação:** Baixar todas as versões, apenas a mais recente ou apenas listar na tela
+7. **Pasta de destino:** Onde salvar os arquivos no seu computador
 
 ---
 
 ### ⚡ Modo Linha de Comando (CLI Automatizado)
 ```bash
-# List all firmwares for Predator T7
-python acer_fota_extractor.py --model T7 --list
+# Baixar informando o modelo personalizado e seu próprio número de série (S/N):
+python acer_fota_extractor.py --model W6 --device-id FFG2ETA001234567890 --download
+
+# Baixar firmware oficial do Predator T7 para o Brasil:
+python acer_fota_extractor.py --model T7 --sku BR --download
 
 # List all firmwares for Predator W6x
 python acer_fota_extractor.py --model W6x --list

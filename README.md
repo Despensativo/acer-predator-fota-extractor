@@ -48,9 +48,23 @@ pip install -r requirements.txt
 
 ---
 
-## 💻 CLI Usage / Como Usar
+## 💻 Usage / Como Usar
 
-### 1. List Available Firmwares & Changelogs (Sem baixar / List only)
+### 🎮 Modo Interativo (Assistente com Perguntas Passo a Passo)
+Se preferir não digitar parâmetros de linha de comando, basta rodar o script diretamente:
+```bash
+python acer_fota_extractor.py
+```
+O script fará um questionário na tela passo a passo:
+1. **Idioma:** Português (Brasil) ou English
+2. **Modelo:** Predator T7, W6x, X7 ou Todos
+3. **Ação:** Baixar todas as versões, apenas a mais recente ou apenas listar na tela
+4. **Região / SKU:** Brasil (BR), EUA (US), Global (GBL), etc.
+5. **Pasta de destino:** Onde salvar os arquivos no seu computador
+
+---
+
+### ⚡ Modo Linha de Comando (CLI Automatizado)
 ```bash
 # List all firmwares for Predator T7
 python acer_fota_extractor.py --model T7 --list

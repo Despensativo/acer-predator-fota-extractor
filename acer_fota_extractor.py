@@ -315,41 +315,39 @@ def interactive_wizard():
     # 2. Modelo / Model
     if is_pt:
         print("\n--- PASSO 1: Escolha o modelo do seu roteador Acer Predator ---")
-        print("  [1] Acer Predator Connect T7  (Wi-Fi 7 BE11000 - Qualcomm IPQ5332)")
-        print("  [2] Acer Predator Connect W6x (Wi-Fi 6 AX6000 - MediaTek MT7986)")
-        print("  [3] Acer Predator Connect X7  (Wi-Fi 7 + 5G CPE - Qualcomm IPQ5332)")
-        print("  [4] TODOS OS MODELOS ACIMA (Varredura Completa)")
-        print("  [5] OUTRO MODELO PERSONALIZADO (Digitar seu modelo e número de série)")
-        mod_in = input("Escolha uma opção [1-5] (padrão: 1): ").strip()
+        print("  [1] Modelo Personalizado / Outro Modelo (Digitar modelo e número de série) [Padrão]")
+        print("  [2] Acer Predator Connect T7  (Wi-Fi 7 BE11000 - Qualcomm IPQ5332)")
+        print("  [3] Acer Predator Connect W6x (Wi-Fi 6 AX6000 - MediaTek MT7986)")
+        print("  [4] Acer Predator Connect X7  (Wi-Fi 7 + 5G CPE - Qualcomm IPQ5332)")
+        mod_in = input("Escolha uma opção [1-4] (padrão: 1): ").strip()
     else:
         print("\n--- STEP 1: Choose your Acer Predator router model ---")
-        print("  [1] Acer Predator Connect T7  (Wi-Fi 7 BE11000 - Qualcomm IPQ5332)")
-        print("  [2] Acer Predator Connect W6x (Wi-Fi 6 AX6000 - MediaTek MT7986)")
-        print("  [3] Acer Predator Connect X7  (Wi-Fi 7 + 5G CPE - Qualcomm IPQ5332)")
-        print("  [4] ALL MODELS ABOVE (Full Scan)")
-        print("  [5] CUSTOM / OTHER MODEL (Enter model name & serial number)")
-        mod_in = input("Choose an option [1-5] (default: 1): ").strip()
+        print("  [1] Custom / Other Model (Enter model name & serial number) [Default]")
+        print("  [2] Acer Predator Connect T7  (Wi-Fi 7 BE11000 - Qualcomm IPQ5332)")
+        print("  [3] Acer Predator Connect W6x (Wi-Fi 6 AX6000 - MediaTek MT7986)")
+        print("  [4] Acer Predator Connect X7  (Wi-Fi 7 + 5G CPE - Qualcomm IPQ5332)")
+        mod_in = input("Choose an option [1-4] (default: 1): ").strip()
 
     custom_device_id = None
     custom_versions = None
     chosen_skus = None
 
-    if mod_in == "5":
-        # Fluxo de modelo personalizado / Custom model flow
+    if not mod_in or mod_in == "1":
+        # Fluxo de modelo personalizado / Custom model flow (Padrão / Default)
         if is_pt:
             print("\n--- CONFIGURAÇÃO DE MODELO PERSONALIZADO ---")
-            c_model = input("Digite o código do modelo (ex: W6, X5, W6m, T7): ").strip()
-            c_sn = input("Digite o Número de Série (S/N) que está na etiqueta do roteador [Enter para usar padrão]: ").strip()
+            c_model = input("Digite o código do modelo (ex: W6, X5, W6m, T7) [Padrão: T7]: ").strip()
+            c_sn = input("Digite o Número de Série (S/N) da etiqueta do roteador [Enter para usar padrão]: ").strip()
             c_sku = input("Digite a Região/SKU (ex: BR, US, GBL, EU, default) [Enter para testar todas]: ").strip()
             c_ver = input("Digite a versão atual do firmware (ex: 1.00.000008) [Enter para varrer todas]: ").strip()
         else:
             print("\n--- CUSTOM MODEL CONFIGURATION ---")
-            c_model = input("Enter router model code (e.g. W6, X5, W6m, T7): ").strip()
+            c_model = input("Enter router model code (e.g. W6, X5, W6m, T7) [Default: T7]: ").strip()
             c_sn = input("Enter Serial Number (S/N from router sticker) [Enter for default]: ").strip()
             c_sku = input("Enter Region/SKU (e.g. BR, US, GBL, EU, default) [Enter to test all]: ").strip()
             c_ver = input("Enter current firmware version (e.g. 1.00.000008) [Enter to probe all]: ").strip()
 
-        models = [c_model if c_model else "W6"]
+        models = [c_model if c_model else "T7"]
         if c_sn:
             custom_device_id = c_sn
         if c_sku:
@@ -357,9 +355,9 @@ def interactive_wizard():
         if c_ver:
             custom_versions = [c_ver]
     else:
-        model_map = {"1": "T7", "2": "W6x", "3": "X7", "4": "all"}
+        model_map = {"2": "T7", "3": "W6x", "4": "X7"}
         chosen_model = model_map.get(mod_in, "T7")
-        models = ["T7", "W6x", "X7"] if chosen_model == "all" else [chosen_model]
+        models = [chosen_model]
 
     # 3. Ação / Action
     if is_pt:

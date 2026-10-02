@@ -193,7 +193,12 @@ def download_firmware(item: dict, output_dir: str, device_id: str) -> bool:
             return True
 
     # Request fresh presigned URL in case original expired
-    sku = item["sku"] if isinstance(item["sku"], str) else item["skus"][0]
+    if "sku" in item and isinstance(item["sku"], str):
+        sku = item["sku"]
+    elif "skus" in item and item["skus"]:
+        sku = item["skus"][0]
+    else:
+        sku = "default"
     trigger_v = item.get("queried_version") or item.get("source_versions_trigger", ["1.01.000012"])[0]
     
     fresh_info = query_fota(item["project"], sku, trigger_v, device_id)
@@ -486,11 +491,11 @@ def interactive_wizard():
 
         print("\n" + "=" * 80)
         if is_pt:
-            print(f"🎉 CONCLUÍDO COM SUCESSO! {success}/{len(items_to_download)} firmwares salvos e verificados com MD5.")
-            print(f"📁 Os arquivos estão armazenados em: {os.path.abspath(outdir)}")
+            print(f"[+] CONCLUÍDO COM SUCESSO! {success}/{len(items_to_download)} firmwares salvos e verificados com MD5.")
+            print(f"[+] Os arquivos estão armazenados em: {os.path.abspath(outdir)}")
         else:
-            print(f"🎉 COMPLETED SUCCESSFULLY! {success}/{len(items_to_download)} firmwares saved and verified with MD5.")
-            print(f"📁 Files stored in: {os.path.abspath(outdir)}")
+            print(f"[+] COMPLETED SUCCESSFULLY! {success}/{len(items_to_download)} firmwares saved and verified with MD5.")
+            print(f"[+] Files stored in: {os.path.abspath(outdir)}")
         print("=" * 80)
 
 # --------------------------------------------------------------------------------------

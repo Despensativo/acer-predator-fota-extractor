@@ -1,0 +1,26 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+# Large binary files (GitHub 100MB limit & bandwidth)
+*.img
+*.bin
+*.elf
+*.mbn
+*.fit
+*.squashfs
+*.tar.gz
+*.tmp
+*.download
+
+# Download directories
+firmwares_oficiais/
+Backups_MTD/
+downloads/
